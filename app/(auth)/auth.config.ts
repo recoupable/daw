@@ -15,6 +15,7 @@ export const authConfig = {
       const isOnStudio = nextUrl.pathname.startsWith('/studio');
       const isOnRegister = nextUrl.pathname.startsWith('/register');
       const isOnLogin = nextUrl.pathname.startsWith('/login');
+      const isRootPath = nextUrl.pathname === '/';
 
       if (isLoggedIn && (isOnLogin || isOnRegister)) {
         return Response.redirect(new URL('/studio', nextUrl as unknown as URL));
@@ -29,11 +30,16 @@ export const authConfig = {
         return false; // Redirect unauthenticated users to login page
       }
 
+      if (isRootPath) {
+        if (isLoggedIn) return true;
+        return Response.redirect(new URL('/login', nextUrl as unknown as URL));
+      }
+
       if (isLoggedIn) {
         return Response.redirect(new URL('/studio', nextUrl as unknown as URL));
       }
 
-      return true;
+      return true; // Allow access to other public routes
     },
   },
 } satisfies NextAuthConfig;
