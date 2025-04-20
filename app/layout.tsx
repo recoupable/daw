@@ -18,8 +18,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://chat.vercel.ai'),
-  title: 'Next.js Chatbot Template',
-  description: 'Next.js chatbot template using the AI SDK.',
+  title: 'Recoup - Generative Audio Workstation (GAW)',
+  description: 'Create and produce music with AI-assisted audio generation and production tools.',
 };
 
 export const viewport = {
@@ -93,7 +93,7 @@ export default async function RootLayout({
           {/* Site header */}
           <header className="sticky top-0 z-40 w-full border-b bg-background px-4 sm:px-6 flex items-center justify-between h-16">
             <div className="flex items-center gap-2 font-semibold">
-              <Link href="/">AI DAW</Link>
+              <Link href="/">Recoup</Link>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
