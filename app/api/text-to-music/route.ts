@@ -5,8 +5,8 @@ import { NextResponse } from 'next/server';
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_MUREKA_API_URL || 'https://api.mureka.ai';
 
-// Enable mock mode for testing without a real API key
-const MOCK_MODE = false; // Real API integration only, no mock mode
+// ⚠️ EMERGENCY FIX: FORCE MOCK MODE OFF
+const MOCK_MODE = false;
 
 // Mock audio URL for testing
 const MOCK_AUDIO_URL =
@@ -23,17 +23,61 @@ export async function POST(request: NextRequest) {
     );
 
     // Get the API key from environment variables
-    const apiKey = process.env.NEXT_PUBLIC_MUREKA_API_KEY;
+    let apiKey =
+      process.env.NEXT_PUBLIC_MUREKA_API_KEY || process.env.MUREKA_API_KEY;
 
+    // ⚠️ EMERGENCY DIAGNOSTICS
+    console.log('');
+    console.log('🔍 MUREKA API KEY DIAGNOSTICS:');
+    console.log('------------------------------');
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('Is Production?', process.env.NODE_ENV === 'production');
+    console.log('API_KEY found?', !!apiKey);
+    console.log(
+      'API_KEY first 5 chars:',
+      apiKey ? apiKey.substring(0, 5) : 'MISSING',
+    );
+    console.log('API_KEY length:', apiKey ? apiKey.length : 0);
     console.log('Using API URL:', API_BASE_URL);
-    console.log('API Key configured:', !!apiKey);
+    console.log(
+      'All env variables:',
+      Object.keys(process.env)
+        .filter(
+          (key) =>
+            key.includes('MUREKA') ||
+            key.includes('API') ||
+            key.includes('KEY') ||
+            key.includes('URL'),
+        )
+        .join(', '),
+    );
+    console.log('------------------------------');
+    console.log('');
 
-    // If in mock mode or no API key, return mock response
-    if (MOCK_MODE || !apiKey) {
-      if (!MOCK_MODE && !apiKey) {
-        console.warn('API key not configured, using mock mode');
-      }
+    // HARDCODED API KEY AS LAST RESORT
+    // If no API key from env vars, use a hardcoded one for testing
+    // CAUTION: This is temporary and for debugging only
+    if (!apiKey) {
+      const hardcodedKey = 'op_m8t5v4g9WxuamRXQsVWw1yqrgiZ4fL1';
+      console.warn(
+        '⚠️ USING HARDCODED API KEY AS FALLBACK - UPDATE YOUR ENV VARS!',
+      );
+      apiKey = hardcodedKey;
+    }
 
+    // Still using mock check but with better logging
+    const usingMock = !apiKey;
+
+    if (usingMock) {
+      console.error('❌❌❌ API KEY MISSING - FORCING MOCK MODE ❌❌❌');
+      console.error('This should never happen in production!');
+      console.error('Check your environment variables in Vercel!');
+    } else {
+      console.log('✅ API Key found, making real request to Mureka API');
+    }
+
+    // Completely bypass mock mode if we have an API key
+    if (usingMock) {
       // Parse the request body to log what would be sent
       const body = await request.json();
       console.log('MOCK: Would send to Mureka API:', body);
@@ -78,7 +122,11 @@ export async function POST(request: NextRequest) {
       model: 'mureka-6',
       prompt: prompt,
       // Add a random seed to ensure different results each time
-      seed: Math.floor(Math.random() * 1000000),
+      seed: Math.floor(Math.random() * 1000000).toString(),
+      // Add a timestamp to prevent any caching on their side
+      timestamp: Date.now(),
+      // Increase temperature for more variety
+      temperature: 0.9,
     };
 
     console.log('Sending to Mureka API:', {
