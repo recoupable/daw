@@ -3,12 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useState } from 'react';
+import { toast } from '@/components/toast';
 
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 
 import { register, type RegisterActionState } from '../actions';
-import { toast } from '@/components/toast';
 
 export default function Page() {
   const router = useRouter();
@@ -24,22 +24,32 @@ export default function Page() {
   );
 
   useEffect(() => {
-    if (state.status === 'user_exists') {
-      toast({ type: 'error', description: 'Account already exists!' });
-    } else if (state.status === 'failed') {
-      toast({ type: 'error', description: 'Failed to create account!' });
+    if (state.status === 'failed') {
+      toast({
+        type: 'error',
+        description: 'Something went wrong!',
+      });
     } else if (state.status === 'invalid_data') {
       toast({
         type: 'error',
         description: 'Failed validating your submission!',
       });
+    } else if (state.status === 'user_exists') {
+      toast({
+        type: 'error',
+        description: 'Account already exists!',
+      });
     } else if (state.status === 'success') {
-      toast({ type: 'success', description: 'Account created successfully!' });
-
+      toast({
+        type: 'success',
+        description: 'Account created successfully!',
+      });
       setIsSuccessful(true);
       router.refresh();
+      // Redirect to studio page after successful registration
+      router.push('/studio');
     }
-  }, [state]);
+  }, [state.status, router]);
 
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get('email') as string);

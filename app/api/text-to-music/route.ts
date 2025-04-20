@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Get the API key from environment variables
-    let apiKey =
+    const apiKey =
       process.env.NEXT_PUBLIC_MUREKA_API_KEY || process.env.MUREKA_API_KEY;
 
     // ⚠️ EMERGENCY DIAGNOSTICS
@@ -33,15 +33,15 @@ export async function POST(request: NextRequest) {
     console.log('NODE_ENV:', process.env.NODE_ENV);
     console.log('Is Production?', process.env.NODE_ENV === 'production');
     console.log('API_KEY found?', !!apiKey);
-    console.log(
-      'API_KEY first 5 chars:',
-      apiKey ? apiKey.substring(0, 5) : 'MISSING',
-    );
-    console.log('API_KEY length:', apiKey ? apiKey.length : 0);
-    console.log('Using API URL:', API_BASE_URL);
-    console.log(
-      'All env variables:',
-      Object.keys(process.env)
+    if (apiKey) {
+      console.log(`API_KEY first 5 chars: ${apiKey.substring(0, 5)}...`);
+      console.log('API_KEY length:', apiKey.length);
+    } else {
+      console.log('API_KEY: MISSING');
+      console.log('⚠️⚠️⚠️ CRITICAL: CHECK ENVIRONMENT VARIABLES IN VERCEL ⚠️⚠️⚠️');
+      // List all keys to help diagnose misspellings
+      console.log('Available env vars that might be useful:');
+      const envKeys = Object.keys(process.env)
         .filter(
           (key) =>
             key.includes('MUREKA') ||
@@ -49,21 +49,12 @@ export async function POST(request: NextRequest) {
             key.includes('KEY') ||
             key.includes('URL'),
         )
-        .join(', '),
-    );
+        .join(', ');
+      console.log(envKeys || 'None found');
+    }
+    console.log('Using API URL:', API_BASE_URL);
     console.log('------------------------------');
     console.log('');
-
-    // HARDCODED API KEY AS LAST RESORT
-    // If no API key from env vars, use a hardcoded one for testing
-    // CAUTION: This is temporary and for debugging only
-    if (!apiKey) {
-      const hardcodedKey = 'op_m8t5v4g9WxuamRXQsVWw1yqrgiZ4fL1';
-      console.warn(
-        '⚠️ USING HARDCODED API KEY AS FALLBACK - UPDATE YOUR ENV VARS!',
-      );
-      apiKey = hardcodedKey;
-    }
 
     // Still using mock check but with better logging
     const usingMock = !apiKey;
@@ -72,6 +63,9 @@ export async function POST(request: NextRequest) {
       console.error('❌❌❌ API KEY MISSING - FORCING MOCK MODE ❌❌❌');
       console.error('This should never happen in production!');
       console.error('Check your environment variables in Vercel!');
+      console.error('Environment variables needed:');
+      console.error('1. NEXT_PUBLIC_MUREKA_API_KEY or');
+      console.error('2. MUREKA_API_KEY');
     } else {
       console.log('✅ API Key found, making real request to Mureka API');
     }
