@@ -2,6 +2,7 @@ import { Toaster } from 'sonner';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
+import Link from 'next/link';
 
 import './globals.css';
 
@@ -77,6 +78,38 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Toaster position="top-center" />
+          {/* Site header */}
+          <header className="sticky top-0 z-40 w-full border-b bg-background px-4 sm:px-6 flex items-center justify-between h-16">
+            <div className="flex items-center gap-2 font-semibold">
+              <Link href="/">AI DAW</Link>
+            </div>
+            <nav className="flex items-center space-x-4 lg:space-x-6">
+              <Link
+                href="/"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                Home
+              </Link>
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                DAW
+              </Link>
+              <Link
+                href="/projects"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Projects
+              </Link>
+              <Link
+                href="/studio"
+                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              >
+                Studio
+              </Link>
+            </nav>
+          </header>
           {children}
         </ThemeProvider>
       </body>
