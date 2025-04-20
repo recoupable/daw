@@ -14,10 +14,19 @@ const MOCK_AUDIO_URL =
 
 export async function POST(request: NextRequest) {
   try {
+    // Log the request details for debugging
+    console.log('TEXT-TO-MUSIC API CALLED');
+    console.log('Request URL:', request.url);
+    console.log(
+      'Request headers:',
+      JSON.stringify(Object.fromEntries(request.headers.entries()), null, 2),
+    );
+
     // Get the API key from environment variables
     const apiKey = process.env.NEXT_PUBLIC_MUREKA_API_KEY;
 
     console.log('Using API URL:', API_BASE_URL);
+    console.log('API Key configured:', !!apiKey);
 
     // If in mock mode or no API key, return mock response
     if (MOCK_MODE || !apiKey) {
@@ -68,6 +77,8 @@ export async function POST(request: NextRequest) {
     const requestBody = {
       model: 'mureka-6',
       prompt: prompt,
+      // Add a random seed to ensure different results each time
+      seed: Math.floor(Math.random() * 1000000),
     };
 
     console.log('Sending to Mureka API:', {
@@ -82,6 +93,10 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
+          // Add cache control headers
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
         },
         body: JSON.stringify(requestBody),
       },
@@ -156,7 +171,13 @@ export async function POST(request: NextRequest) {
     console.log('--------------------------------------------');
 
     // Return the task data
-    return NextResponse.json(responseData);
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control':
+          'no-store, no-cache, must-revalidate, proxy-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
   } catch (error) {
     console.error('Text-to-music error:', error);
     return NextResponse.json(
@@ -166,7 +187,14 @@ export async function POST(request: NextRequest) {
             ? error.message
             : 'An unexpected error occurred',
       },
-      { status: 500 },
+      {
+        status: 500,
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+        },
+      },
     );
   }
 }
