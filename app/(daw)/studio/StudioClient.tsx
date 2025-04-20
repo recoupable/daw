@@ -361,7 +361,14 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           // Get the audio URL
           let audioUrl = null;
           if (data.choices && data.choices.length > 0) {
-            audioUrl = data.choices[0]?.url || data.choices[0]?.flac_url;
+            // Instead of always using the first choice, select a random one
+            const randomIndex = Math.floor(Math.random() * data.choices.length);
+            audioUrl =
+              data.choices[randomIndex]?.url ||
+              data.choices[randomIndex]?.flac_url;
+            console.log(
+              `Selected audio choice ${randomIndex + 1} of ${data.choices.length}`,
+            );
           } else if (data.url) {
             audioUrl = data.url;
           } else if (data.audioUrl) {
@@ -489,6 +496,44 @@ export default function StudioClient({ projectId }: StudioClientProps) {
       } else if (result.status === 'completed' && result.audioUrl) {
         // In case of immediate completion
         const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(result.audioUrl)}&_=${Date.now()}`;
+
+        // Get track color
+        const trackColor = getTrack(selection.trackId)?.color || 'gray';
+
+        // Create new audio block
+        const newBlock: AudioBlock = {
+          id: `block-${Date.now()}`,
+          trackId: selection.trackId,
+          name: prompt,
+          start: selection.startBeat,
+          duration: selection.endBeat - selection.startBeat + 1,
+          audioUrl: proxiedAudioUrl,
+          color: trackColor,
+        };
+
+        addAudioBlock(newBlock);
+        setPrompt('');
+        clearSelection();
+        setError('Audio generated successfully!');
+
+        // Clear success message after 3 seconds
+        setTimeout(() => setError(null), 3000);
+      } else if (
+        result.status === 'completed' &&
+        result.choices &&
+        result.choices.length > 0
+      ) {
+        // Handle case where API returns immediate completion with choices
+        // Select a random choice for variety
+        const randomIndex = Math.floor(Math.random() * result.choices.length);
+        const audioUrl =
+          result.choices[randomIndex]?.url ||
+          result.choices[randomIndex]?.flac_url;
+        console.log(
+          `Selected audio choice ${randomIndex + 1} of ${result.choices.length}`,
+        );
+
+        const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}&_=${Date.now()}`;
 
         // Get track color
         const trackColor = getTrack(selection.trackId)?.color || 'gray';
