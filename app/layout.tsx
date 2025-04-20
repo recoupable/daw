@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import Link from 'next/link';
+import { ClientComponents } from '@/components/ClientComponents';
 
 import './globals.css';
 
@@ -70,7 +71,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -78,6 +79,8 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Toaster position="top-center" />
+          {/* Client components for browser detection */}
+          <ClientComponents />
           {/* Site header */}
           <header className="sticky top-0 z-40 w-full border-b bg-background px-4 sm:px-6 flex items-center justify-between h-16">
             <div className="flex items-center gap-2 font-semibold">
