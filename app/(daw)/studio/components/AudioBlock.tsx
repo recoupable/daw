@@ -114,6 +114,17 @@ export function AudioBlock({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Adjust canvas size to match its display size
+    const displayWidth = canvas.clientWidth;
+    const displayHeight = canvas.clientHeight;
+
+    // Only update canvas dimensions if they don't match display size
+    if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+      canvas.width = displayWidth;
+      canvas.height = displayHeight;
+      console.log(`Resized canvas to ${displayWidth}x${displayHeight}`);
+    }
+
     // Get canvas dimensions
     const width = canvas.width;
     const height = canvas.height;
@@ -128,10 +139,12 @@ export function AudioBlock({
     const center = height / 2;
 
     // Draw waveform
+    const barWidth = Math.max(1, width / data.length); // Ensure we use at least 1px width
+
     for (let i = 0; i < data.length; i++) {
       const x = Math.floor((i / data.length) * width);
       const amplitude = data[i] * (height * 0.7); // Scale amplitude to 70% of height
-      ctx.fillRect(x, center - amplitude / 2, 1, amplitude);
+      ctx.fillRect(x, center - amplitude / 2, barWidth, amplitude);
     }
   };
 
@@ -142,6 +155,8 @@ export function AudioBlock({
         ...style,
         background:
           'linear-gradient(to bottom, rgba(147, 51, 234, 0.5), rgba(126, 34, 206, 0.65))',
+        height: '80%',
+        top: '10%',
       }}
       onMouseDown={onMouseDown}
       onMouseEnter={() => setIsHovered(true)}

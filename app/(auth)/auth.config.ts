@@ -17,6 +17,15 @@ export const authConfig = {
       const isOnLogin = nextUrl.pathname.startsWith('/login');
       const isRootPath = nextUrl.pathname === '/';
 
+      // Allow audio API routes without authentication
+      const isAudioApiRoute =
+        nextUrl.pathname.startsWith('/api/text-to-music') ||
+        nextUrl.pathname.startsWith('/api/audio-proxy');
+
+      if (isAudioApiRoute) {
+        return true; // Always allow access to audio API routes
+      }
+
       if (isLoggedIn && (isOnLogin || isOnRegister)) {
         return Response.redirect(new URL('/studio', nextUrl as unknown as URL));
       }

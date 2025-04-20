@@ -152,9 +152,19 @@ export function useAudioBlockManager({ bpm }: UseAudioBlockManagerProps) {
   // Calculate block style
   const getAudioBlockStyle = useCallback(
     (block: AudioBlock, beatWidth = 64) => {
+      // Calculate exact position and width
+      const startPosition = (block.start - 1) * beatWidth;
+      const fullWidth = block.duration * beatWidth;
+
+      console.log(
+        `Block ${block.id} style: start=${block.start}, duration=${block.duration}, width=${fullWidth}px`,
+      );
+
       return {
-        left: `${(block.start - 1) * beatWidth}px`,
-        width: `${block.duration * beatWidth}px`,
+        left: `${startPosition}px`,
+        width: `${fullWidth}px`,
+        // Add z-index to ensure blocks display above grid lines
+        zIndex: 1,
       };
     },
     [],

@@ -18,7 +18,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
 
+    console.log(`[STATUS] Request to check status for task ID: "${id}"`);
+    console.log(`[STATUS] Request URL: ${request.url}`);
+    console.log(
+      `[STATUS] Request headers:`,
+      JSON.stringify(Object.fromEntries(request.headers.entries()), null, 2),
+    );
+
     if (!id) {
+      console.error('[STATUS] Missing task ID parameter');
       return NextResponse.json(
         { message: 'Task ID is required' },
         { status: 400 },
@@ -27,6 +35,7 @@ export async function GET(request: NextRequest) {
 
     // If in mock mode, return mock response
     if (MOCK_MODE || id.startsWith('mock-')) {
+      console.log(`[STATUS] Using MOCK mode for ID: ${id}`);
       // For demo purposes, simulate different states based on time
       const taskCreationTime =
         Number.parseInt(id.replace('mock-', ''), 10) || Date.now();
@@ -34,20 +43,30 @@ export async function GET(request: NextRequest) {
 
       // Simulate real-time progress
       if (elapsedSeconds < 10) {
+        console.log(
+          `[STATUS] Mock response: preparing (${elapsedSeconds.toFixed(1)}s elapsed)`,
+        );
         return NextResponse.json({
           id,
           status: 'preparing',
           message: 'Preparing to generate music...',
         });
       } else if (elapsedSeconds < 20) {
+        const progress = Math.min(0.5, (elapsedSeconds - 10) / 20);
+        console.log(
+          `[STATUS] Mock response: processing (${elapsedSeconds.toFixed(1)}s elapsed, progress: ${(progress * 100).toFixed(1)}%)`,
+        );
         return NextResponse.json({
           id,
           status: 'processing',
           message: 'Processing your request...',
-          progress: Math.min(0.5, (elapsedSeconds - 10) / 20),
+          progress: progress,
         });
       } else {
         // After 20 seconds, return completed
+        console.log(
+          `[STATUS] Mock response: completed (${elapsedSeconds.toFixed(1)}s elapsed)`,
+        );
         return NextResponse.json({
           id,
           status: 'completed',
@@ -60,6 +79,7 @@ export async function GET(request: NextRequest) {
     const apiKey = process.env.NEXT_PUBLIC_MUREKA_API_KEY;
 
     if (!apiKey) {
+      console.error('[STATUS] API key not configured');
       return NextResponse.json(
         { message: 'API key not configured' },
         { status: 401 },
@@ -67,15 +87,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Query the Mureka API for the task status
-    console.log(`Checking status for task ID: "${id}"`);
+    console.log(`[STATUS] Checking status for task ID: "${id}"`);
 
     // Use the correct endpoint format from documentation: /v1/instrumental/query/{task_id}
     const statusUrl = `${API_BASE_URL}/v1/instrumental/query/${id}`;
 
-    console.log(`Status check URL: ${statusUrl}`);
-    console.log(`Headers: Authorization: Bearer ${apiKey.substring(0, 5)}...`);
+    console.log(`[STATUS] Status check URL: ${statusUrl}`);
+    console.log(
+      `[STATUS] Headers: Authorization: Bearer ${apiKey.substring(0, 5)}...`,
+    );
 
     try {
+      console.log(
+        `[STATUS] Sending request to Mureka API at ${new Date().toISOString()}`,
+      );
       const response = await fetch(statusUrl, {
         method: 'GET',
         headers: {
@@ -87,57 +112,155 @@ export async function GET(request: NextRequest) {
             'no-store, no-cache, must-revalidate, proxy-revalidate',
           Pragma: 'no-cache',
         },
+        redirect: 'follow', // Explicitly follow redirects
       });
 
       console.log(
-        `Status response code: ${response.status} ${response.statusText}`,
+        `[STATUS] Status response code: ${response.status} ${response.statusText}`,
+      );
+      console.log(
+        `[STATUS] Response headers:`,
+        JSON.stringify(
+          Object.fromEntries([...response.headers.entries()]),
+          null,
+          2,
+        ),
       );
 
+      // Check if response was redirected
+      if (response.redirected) {
+        console.log(`[STATUS] ⚠️ Request was redirected to: ${response.url}`);
+      }
+
       if (!response.ok) {
-        // Try to get the error message
-        const errorText = await response
-          .text()
-          .catch((e) => `Could not read response: ${e.message}`);
-        console.error(`Error response from Mureka: ${errorText}`);
+        // Try to get the error message as raw text first
+        const errorText = await response.text();
+        console.error(
+          `[STATUS] Error response from Mureka: ${errorText.substring(0, 200)}...`,
+        );
+
+        // Check if we got HTML instead of JSON (common with auth failures)
+        if (
+          errorText.trim().startsWith('<!DOCTYPE') ||
+          errorText.trim().startsWith('<html')
+        ) {
+          console.error(
+            '[STATUS] Received HTML response instead of JSON - likely auth error',
+          );
+
+          // Try to extract any useful information from the HTML
+          let diagnosticInfo = 'HTML error page received';
+          if (errorText.includes('<title>')) {
+            const titleMatch = errorText.match(/<title>(.*?)<\/title>/i);
+            if (titleMatch?.[1]) {
+              diagnosticInfo = titleMatch[1];
+              console.error(`[STATUS] HTML title: ${diagnosticInfo}`);
+            }
+          }
+
+          return NextResponse.json(
+            {
+              message:
+                'Failed to check generation status - authentication error',
+              error: diagnosticInfo,
+              status: 'failed',
+              diagnostics: {
+                responseStatus: response.status,
+                responseType: 'html',
+                apiUrl: statusUrl.replace(apiKey, '[REDACTED]'),
+              },
+            },
+            { status: response.status },
+          );
+        }
+
+        // Try to parse as JSON if it looks like JSON
+        let errorData = null;
+        if (errorText.trim().startsWith('{')) {
+          try {
+            errorData = JSON.parse(errorText);
+            console.error('[STATUS] Parsed error data:', errorData);
+          } catch (e) {
+            console.error(
+              '[STATUS] Error text looked like JSON but failed to parse',
+            );
+          }
+        }
 
         return NextResponse.json(
-          { message: 'Failed to check generation status', error: errorText },
+          {
+            message: 'Failed to check generation status',
+            error: errorText,
+            errorData: errorData,
+            status: 'failed',
+          },
           { status: response.status },
         );
       }
 
       // Successfully got a response
-      const responseData = await response.json();
+      const responseText = await response.text();
       console.log(
-        'Status API full response:',
+        `[STATUS] Raw response preview: ${responseText.substring(0, 200)}...`,
+      );
+      let responseData: any; // Add explicit type to avoid implicit any
+
+      // Safety check - make sure we got valid JSON
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error(
+          '[STATUS] Invalid JSON response from Mureka API:',
+          responseText.substring(0, 200),
+        );
+
+        return NextResponse.json(
+          {
+            message: 'Invalid JSON response from music generation API',
+            error: 'Failed to parse API response as JSON',
+            rawResponse: responseText.substring(0, 500),
+            status: 'failed',
+          },
+          { status: 500 },
+        );
+      }
+
+      console.log(
+        '[STATUS] Status API full response:',
         JSON.stringify(responseData, null, 2),
       );
 
       // Check for audio URL information
-      console.log('Looking for audio URL in response:');
+      console.log('[STATUS] Looking for audio URL in response:');
       if (responseData.choices && responseData.choices.length > 0) {
         console.log(
-          '- Found choices array with URLs:',
+          '[STATUS] - Found choices array with URLs:',
           responseData.choices[0]?.url,
           responseData.choices[0]?.flac_url,
         );
       }
       if (responseData.url) {
-        console.log('- Found direct URL:', responseData.url);
+        console.log('[STATUS] - Found direct URL:', responseData.url);
       }
       if (responseData.audioUrl) {
-        console.log('- Found audioUrl:', responseData.audioUrl);
+        console.log('[STATUS] - Found audioUrl:', responseData.audioUrl);
       }
 
-      return NextResponse.json(responseData, {
+      // Create final response
+      const ourResponse = NextResponse.json(responseData, {
         headers: {
           'Cache-Control':
             'no-store, no-cache, must-revalidate, proxy-revalidate',
           Pragma: 'no-cache',
         },
       });
+
+      console.log(
+        `[STATUS] Returning response with status ${responseData.status} at ${new Date().toISOString()}`,
+      );
+      return ourResponse;
     } catch (error) {
-      console.error('Error querying task status:', error);
+      console.error('[STATUS] Error querying task status:', error);
       return NextResponse.json(
         {
           message: 'Error querying task status',
@@ -154,7 +277,7 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error('Status check error:', error);
+    console.error('[STATUS] Status check error:', error);
     return NextResponse.json(
       {
         message:

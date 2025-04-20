@@ -227,7 +227,10 @@ export function TrackList({
             {selection && selection.trackId === track.id && (
               <div
                 className="absolute h-full border-2 border-dashed border-primary/50 bg-primary/10 rounded-sm flex items-center justify-center"
-                style={getSelectionStyle()}
+                style={{
+                  ...getSelectionStyle(),
+                  zIndex: 2, // Ensure selection is above audio blocks
+                }}
               >
                 {isGenerating && (
                   <div className="flex flex-col items-center gap-2">

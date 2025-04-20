@@ -324,16 +324,19 @@ export default function StudioClient({ projectId }: StudioClientProps) {
     let pollingCount = 0;
     const MAX_POLLS = 30; // Stop after 30 attempts
 
-    console.log(`Starting to poll for task ID: ${taskId}`);
+    console.log(`=== STARTING POLLING FOR TASK ID: ${taskId} ===`);
     setCurrentTaskId(taskId);
 
     const interval = setInterval(async () => {
       try {
         pollingCount++;
-        console.log(`Polling attempt ${pollingCount} for task ID: ${taskId}`);
+        console.log(
+          `[Polling #${pollingCount}] Checking status for task ID: ${taskId}`,
+        );
 
         if (pollingCount >= MAX_POLLS) {
           clearInterval(interval);
+          console.error(`Polling timeout reached after ${MAX_POLLS} attempts`);
           setError('Generation timed out. Please try again.');
           setCurrentTaskId(null);
           setPollingInterval(null);
@@ -341,19 +344,76 @@ export default function StudioClient({ projectId }: StudioClientProps) {
         }
 
         // Use relative URL which works on any port
-        const response = await fetch(
-          `/api/text-to-music/status?id=${encodeURIComponent(taskId)}`,
+        const statusUrl = `/api/text-to-music/status?id=${encodeURIComponent(taskId)}`;
+        console.log(
+          `[Polling #${pollingCount}] Sending request to: ${statusUrl}`,
         );
+
+        const response = await fetch(statusUrl, {
+          redirect: 'error', // Don't follow redirects
+        });
+
+        console.log(
+          `[Polling #${pollingCount}] Status response: ${response.status} ${response.statusText}`,
+        );
+        console.log(
+          `[Polling #${pollingCount}] Response headers:`,
+          JSON.stringify(
+            Object.fromEntries([...response.headers.entries()]),
+            null,
+            2,
+          ),
+        );
+
+        // Check if response was redirected
+        if (response.redirected) {
+          console.error(
+            `[Polling #${pollingCount}] ⚠️ Request was redirected to:`,
+            response.url,
+          );
+        }
 
         if (!response.ok) {
           throw new Error(`Status check failed: ${response.status}`);
         }
 
-        const data = await response.json();
-        console.log('Status response:', data);
+        // Get the raw text first to debug potential HTML responses
+        const rawText = await response.text();
+        console.log(
+          `[Polling #${pollingCount}] Raw response preview:`,
+          rawText.substring(0, 200),
+        );
+
+        let data: any; // Add explicit type to avoid implicit any
+
+        // Check if response looks like HTML instead of JSON
+        if (
+          rawText.trim().startsWith('<!DOCTYPE') ||
+          rawText.trim().startsWith('<html')
+        ) {
+          console.error(
+            `[Polling #${pollingCount}] Received HTML instead of JSON: ${rawText.substring(0, 200)}...`,
+          );
+          throw new Error('Received HTML error page instead of JSON response');
+        }
+
+        // Try to parse as JSON
+        try {
+          data = JSON.parse(rawText);
+        } catch (jsonError) {
+          console.error(
+            `[Polling #${pollingCount}] Failed to parse JSON response: ${rawText.substring(0, 200)}...`,
+          );
+          throw new Error('Invalid JSON response from server');
+        }
+
+        console.log(`[Polling #${pollingCount}] Status data:`, data);
 
         // If completed, process the result
         if (data.status === 'completed' || data.status === 'succeeded') {
+          console.log(
+            `[Polling #${pollingCount}] ✅ Audio generation completed`,
+          );
           clearInterval(interval);
           setCurrentTaskId(null);
           setPollingInterval(null);
@@ -367,38 +427,65 @@ export default function StudioClient({ projectId }: StudioClientProps) {
               data.choices[randomIndex]?.url ||
               data.choices[randomIndex]?.flac_url;
             console.log(
-              `Selected audio choice ${randomIndex + 1} of ${data.choices.length}`,
+              `[Polling #${pollingCount}] Selected audio choice ${randomIndex + 1} of ${data.choices.length}: ${audioUrl}`,
             );
           } else if (data.url) {
             audioUrl = data.url;
+            console.log(
+              `[Polling #${pollingCount}] Using direct URL: ${audioUrl}`,
+            );
           } else if (data.audioUrl) {
             audioUrl = data.audioUrl;
+            console.log(
+              `[Polling #${pollingCount}] Using audioUrl: ${audioUrl}`,
+            );
           }
 
           if (!audioUrl) {
+            console.error(
+              `[Polling #${pollingCount}] No audio URL found in completed response:`,
+              data,
+            );
             setError('Generation completed but no audio URL found.');
             return;
           }
 
           // Proxy the audio URL to avoid CORS issues
           const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}&_=${Date.now()}`;
+          console.log(
+            `[Polling #${pollingCount}] Proxying audio through: ${proxiedAudioUrl}`,
+          );
+
+          // Make sure we have a valid selection
+          if (!selection) {
+            console.error(
+              `[Polling #${pollingCount}] No selection found for adding audio block`,
+            );
+            setError('No selection available to place the generated audio');
+            return;
+          }
 
           // Get track color
-          const trackColor =
-            getTrack(selection?.trackId || '')?.color || 'gray';
+          const trackColor = getTrack(selection.trackId)?.color || 'gray';
 
-          // Create a new audio block
+          // Create a new audio block with EXACT dimensions of the selection
           const newBlock: AudioBlock = {
             id: `block-${Date.now()}`,
-            trackId: selection?.trackId || tracks[0].id,
+            trackId: selection.trackId,
             name: prompt,
-            start: selection?.startBeat || 1,
-            duration: selection
-              ? selection.endBeat - selection.startBeat + 1
-              : 4,
+            start: selection.startBeat,
+            duration: selection.endBeat - selection.startBeat + 1,
             audioUrl: proxiedAudioUrl,
             color: trackColor,
           };
+
+          console.log(
+            `[Polling #${pollingCount}] Creating new audio block:`,
+            newBlock,
+          );
+          console.log(
+            `[Polling #${pollingCount}] Block dimensions: start=${newBlock.start}, duration=${newBlock.duration}, selection=[${selection.startBeat}-${selection.endBeat}]`,
+          );
 
           // Add the block
           addAudioBlock(newBlock);
@@ -409,6 +496,10 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           // Clear success message after 3 seconds
           setTimeout(() => setError(null), 3000);
         } else if (data.status === 'failed') {
+          console.error(
+            `[Polling #${pollingCount}] ❌ Audio generation failed:`,
+            data.error || 'Unknown error',
+          );
           clearInterval(interval);
           setCurrentTaskId(null);
           setPollingInterval(null);
@@ -419,13 +510,16 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           const progress = data.progress
             ? ` (${Math.round(data.progress * 100)}%)`
             : '';
-          // Only log to console instead of showing error message
+
           console.log(
-            `Audio generation in progress - status: ${statusText}${progress}. Please wait...`,
+            `[Polling #${pollingCount}] 🔄 Audio generation in progress - status: ${statusText}${progress}. Will check again in 5 seconds.`,
           );
         }
       } catch (err) {
-        console.error('Error checking generation status:', err);
+        console.error(
+          `[Polling #${pollingCount}] Error checking generation status:`,
+          err,
+        );
         setError(
           err instanceof Error
             ? err.message
@@ -450,6 +544,8 @@ export default function StudioClient({ projectId }: StudioClientProps) {
 
     try {
       setIsGenerating(true);
+      console.log('=== AUDIO GENERATION STARTED ===');
+      console.log(`Prompt: "${prompt}"`);
 
       // Calculate duration in seconds (assume 4/4 time signature)
       const beatsPerSecond = bpm / 60; // BPM / 60 = beats per second
@@ -457,50 +553,119 @@ export default function StudioClient({ projectId }: StudioClientProps) {
         (selection.endBeat - selection.startBeat + 1) / beatsPerSecond;
 
       console.log(
-        `Generating audio with prompt: "${prompt}", duration: ${durationInSeconds}s, tempo: ${bpm}`,
+        `Generating audio with prompt: "${prompt}", duration: ${durationInSeconds}s, tempo: ${bpm}, selection: [${selection.startBeat}-${selection.endBeat}]`,
       );
 
+      // Create the request payload
+      const requestPayload = {
+        model: 'mureka-6',
+        prompt: prompt,
+        duration: durationInSeconds,
+        tempo: bpm,
+        key: 'C Minor',
+      };
+      console.log('Request payload:', JSON.stringify(requestPayload, null, 2));
+
       // Use relative URL which works on any port
+      console.log('Sending request to /api/text-to-music...');
       const response = await fetch('/api/text-to-music', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: 'mureka-6',
-          prompt: prompt,
-          duration: durationInSeconds,
-          tempo: bpm,
-          key: 'C Minor',
-        }),
+        body: JSON.stringify(requestPayload),
+        redirect: 'error', // Don't follow redirects
       });
+
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+      console.log(
+        'Response headers:',
+        JSON.stringify(
+          Object.fromEntries([...response.headers.entries()]),
+          null,
+          2,
+        ),
+      );
+
+      // Check if response was redirected
+      if (response.redirected) {
+        console.error('⚠️ Request was redirected to:', response.url);
+      }
 
       if (!response.ok) {
         let errorMessage = `Error ${response.status}`;
         try {
-          const errorData = await response.json();
-          if (errorData?.message) {
-            errorMessage = errorData.message;
+          const errorText = await response.text();
+          console.error('Error response body:', errorText);
+
+          // Try to parse as JSON if possible
+          try {
+            const errorData = JSON.parse(errorText);
+            if (errorData?.message) {
+              errorMessage = errorData.message;
+            }
+            console.error('Parsed error data:', errorData);
+          } catch (jsonError) {
+            console.error('Error response is not valid JSON');
+            // Check if it's HTML
+            if (
+              errorText.trim().startsWith('<!DOCTYPE') ||
+              errorText.trim().startsWith('<html')
+            ) {
+              console.error('Received HTML response instead of JSON');
+              errorMessage = 'Server returned HTML instead of JSON response';
+            }
           }
         } catch (parseError) {
-          console.error('Error parsing error response:', parseError);
+          console.error('Failed to read error response:', parseError);
         }
         throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('Generation API response:', result);
+      const responseText = await response.text();
+      console.log(
+        'Response text (first 300 chars):',
+        responseText.substring(0, 300),
+      );
+
+      // Try to parse as JSON
+      let result: any; // Add explicit type to prevent 'implicitly has any type' error
+      try {
+        result = JSON.parse(responseText);
+        console.log('Generation API response:', result);
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError);
+        if (
+          responseText.trim().startsWith('<!DOCTYPE') ||
+          responseText.trim().startsWith('<html')
+        ) {
+          console.error('Received HTML response instead of JSON');
+          throw new Error('Server returned HTML instead of JSON response');
+        }
+        throw new Error('Invalid JSON response from server');
+      }
 
       if (result.id) {
+        console.log(`Audio generation task started with ID: ${result.id}`);
         startPolling(result.id);
       } else if (result.status === 'completed' && result.audioUrl) {
         // In case of immediate completion
+        console.log(
+          `Audio generation completed immediately with URL: ${result.audioUrl}`,
+        );
         const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(result.audioUrl)}&_=${Date.now()}`;
+
+        // Make sure we have a valid selection
+        if (!selection) {
+          console.error('No selection found for adding audio block');
+          setError('No selection available to place the generated audio');
+          return;
+        }
 
         // Get track color
         const trackColor = getTrack(selection.trackId)?.color || 'gray';
 
-        // Create new audio block
+        // Create new audio block with EXACT dimensions of the selection
         const newBlock: AudioBlock = {
           id: `block-${Date.now()}`,
           trackId: selection.trackId,
@@ -510,6 +675,11 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           audioUrl: proxiedAudioUrl,
           color: trackColor,
         };
+
+        console.log('Creating new audio block:', newBlock);
+        console.log(
+          `Block dimensions: start=${newBlock.start}, duration=${newBlock.duration}, selection=[${selection.startBeat}-${selection.endBeat}]`,
+        );
 
         addAudioBlock(newBlock);
         setPrompt('');
@@ -530,15 +700,22 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           result.choices[randomIndex]?.url ||
           result.choices[randomIndex]?.flac_url;
         console.log(
-          `Selected audio choice ${randomIndex + 1} of ${result.choices.length}`,
+          `Selected audio choice ${randomIndex + 1} of ${result.choices.length}: ${audioUrl}`,
         );
 
         const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}&_=${Date.now()}`;
 
+        // Make sure we have a valid selection
+        if (!selection) {
+          console.error('No selection found for adding audio block');
+          setError('No selection available to place the generated audio');
+          return;
+        }
+
         // Get track color
         const trackColor = getTrack(selection.trackId)?.color || 'gray';
 
-        // Create new audio block
+        // Create new audio block with EXACT dimensions of the selection
         const newBlock: AudioBlock = {
           id: `block-${Date.now()}`,
           trackId: selection.trackId,
@@ -549,6 +726,11 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           color: trackColor,
         };
 
+        console.log('Creating new audio block:', newBlock);
+        console.log(
+          `Block dimensions: start=${newBlock.start}, duration=${newBlock.duration}, selection=[${selection.startBeat}-${selection.endBeat}]`,
+        );
+
         addAudioBlock(newBlock);
         setPrompt('');
         clearSelection();
@@ -557,13 +739,16 @@ export default function StudioClient({ projectId }: StudioClientProps) {
         // Clear success message after 3 seconds
         setTimeout(() => setError(null), 3000);
       } else {
+        console.error('Unexpected response format:', result);
         setError('Failed to start audio generation. Please try again.');
       }
     } catch (err) {
+      console.error('Audio generation error:', err);
       setError(
         err instanceof Error ? err.message : 'An unknown error occurred',
       );
     } finally {
+      console.log('=== AUDIO GENERATION PROCESS COMPLETED ===');
       setIsGenerating(false);
     }
   };
