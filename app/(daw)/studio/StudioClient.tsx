@@ -25,7 +25,8 @@ const generateId = () => `id-${Math.random().toString(36).substr(2, 9)}`;
 const getProxiedAudioUrl = (url: string) => {
   // Only proxy external URLs, not local ones
   if (url.startsWith('http')) {
-    return `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+    // Add a timestamp to prevent caching
+    return `/api/audio-proxy?url=${encodeURIComponent(url)}&_=${Date.now()}`;
   }
   return url;
 };
@@ -373,7 +374,7 @@ export default function StudioClient({ projectId }: StudioClientProps) {
           }
 
           // Proxy the audio URL to avoid CORS issues
-          const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}`;
+          const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(audioUrl)}&_=${Date.now()}`;
 
           // Get track color
           const trackColor =
@@ -487,7 +488,7 @@ export default function StudioClient({ projectId }: StudioClientProps) {
         startPolling(result.id);
       } else if (result.status === 'completed' && result.audioUrl) {
         // In case of immediate completion
-        const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(result.audioUrl)}`;
+        const proxiedAudioUrl = `/api/audio-proxy?url=${encodeURIComponent(result.audioUrl)}&_=${Date.now()}`;
 
         // Get track color
         const trackColor = getTrack(selection.trackId)?.color || 'gray';

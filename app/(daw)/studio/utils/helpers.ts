@@ -15,7 +15,8 @@ export const generateId = (): string =>
 export const getProxiedAudioUrl = (url: string): string => {
   // Only proxy external URLs, not local ones
   if (url.startsWith('http')) {
-    return `/api/audio-proxy?url=${encodeURIComponent(url)}`;
+    // Add a timestamp to prevent caching
+    return `/api/audio-proxy?url=${encodeURIComponent(url)}&_=${Date.now()}`;
   }
   return url;
 };

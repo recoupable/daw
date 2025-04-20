@@ -15,7 +15,12 @@ export async function GET(request: NextRequest) {
     console.log(`Proxying audio from: ${url}`);
 
     // Fetch the audio file
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
 
     if (!response.ok) {
       return NextResponse.json(
@@ -37,8 +42,10 @@ export async function GET(request: NextRequest) {
       headers: {
         'Content-Type': contentType,
         'Content-Length': arrayBuffer.byteLength.toString(),
-        // Set cache headers to cache the audio
-        'Cache-Control': 'public, max-age=31536000',
+        // Prevent caching of audio content
+        'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+        Pragma: 'no-cache',
+        Expires: '0',
       },
     });
   } catch (error) {
