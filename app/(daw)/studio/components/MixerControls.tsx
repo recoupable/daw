@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Volume2, VolumeX, Disc } from 'lucide-react';
-import { Slider } from '../../../components/ui/slider';
+import { Slider } from '../../../../components/ui/slider';
 import { useAudioMixer } from '../hooks/useAudioMixer';
 
 interface MixerControlsProps {

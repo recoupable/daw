@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { Slider } from '../../../components/ui/slider';
+import { Slider } from '../../../../components/ui/slider';
 
 // Simple utility for combining class names
 const cn = (...classes: string[]) => classes.filter(Boolean).join(' ');
