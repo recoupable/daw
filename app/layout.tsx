@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import Link from 'next/link';
 import { ClientComponents } from '@/components/ClientComponents';
+import { Analytics } from '@vercel/analytics/react';
 
 import './globals.css';
 
@@ -114,6 +115,7 @@ export default async function RootLayout({
             </nav>
           </header>
           {children}
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
