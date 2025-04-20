@@ -82,6 +82,10 @@ export async function GET(request: NextRequest) {
           Authorization: `Bearer ${apiKey}`,
           Accept: 'application/json',
           'Content-Type': 'application/json',
+          // Add cache control headers
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
         },
       });
 
@@ -125,7 +129,13 @@ export async function GET(request: NextRequest) {
         console.log('- Found audioUrl:', responseData.audioUrl);
       }
 
-      return NextResponse.json(responseData);
+      return NextResponse.json(responseData, {
+        headers: {
+          'Cache-Control':
+            'no-store, no-cache, must-revalidate, proxy-revalidate',
+          Pragma: 'no-cache',
+        },
+      });
     } catch (error) {
       console.error('Error querying task status:', error);
       return NextResponse.json(
@@ -133,7 +143,14 @@ export async function GET(request: NextRequest) {
           message: 'Error querying task status',
           error: error instanceof Error ? error.message : String(error),
         },
-        { status: 500 },
+        {
+          status: 500,
+          headers: {
+            'Cache-Control':
+              'no-store, no-cache, must-revalidate, proxy-revalidate',
+            Pragma: 'no-cache',
+          },
+        },
       );
     }
   } catch (error) {

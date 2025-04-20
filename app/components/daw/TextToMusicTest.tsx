@@ -83,14 +83,18 @@ export default function TextToMusicTest() {
       setTaskId('');
 
       // Prepare request
-      const response = await fetch('/api/text-to-music', {
+      const response = await fetch(`/api/text-to-music?_=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
         },
         body: JSON.stringify({
           model: 'mureka-6',
           prompt: prompt,
+          // Add a timestamp to ensure randomness
+          timestamp: Date.now(),
         }),
       });
 
@@ -160,10 +164,15 @@ export default function TextToMusicTest() {
         }
 
         // Check status
-        const statusUrl = `/api/text-to-music/status?id=${encodeURIComponent(id)}`;
+        const statusUrl = `/api/text-to-music/status?id=${encodeURIComponent(id)}&_=${Date.now()}`;
         console.log(`Status check URL: ${statusUrl}`);
 
-        const response = await fetch(statusUrl);
+        const response = await fetch(statusUrl, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+          },
+        });
 
         console.log(
           `Status response: ${response.status} ${response.statusText}`,
