@@ -16,8 +16,8 @@
 
 ### Proof of Concept Development
 - [x] Build minimal timeline grid prototype
-  - [x] Test performance with multiple tracks
-  - [x] Verify grid snapping functionality
+  - [ ] Test performance with multiple tracks
+  - [ ] Verify grid snapping functionality
 - [x] Create simple audio block component
   - [x] Test waveform rendering
   - [ ] Verify dragging and resizing capabilities
@@ -66,10 +66,11 @@
   - [ ] Define build stages
   - [ ] Plan test automation strategy
   - [ ] Outline deployment process
-- [ ] Set up GitHub Actions workflow
-  - [ ] Configure build steps
-  - [ ] Set up test automation
-  - [ ] Implement linting and type checking
+- [x] Set up production build process
+  - [x] Fix routing structure for Next.js compatibility
+  - [x] Resolve TypeScript errors with dynamic routes
+  - [x] Standardize on app/(daw) route group format
+  - [x] Implement simplified routing for initial deployment
 - [ ] Create deployment pipeline
   - [ ] Configure staging deployment
   - [ ] Setup production deployment
@@ -89,10 +90,10 @@
   - [x] Create `/app/(daw)/` route group
   - [x] Setup DAW landing page
   - [x] Create projects listing page
-  - [x] Implement project editor route
+  - [x] Implement basic studio route with fixed projectId
   - [x] Create studio/DAW interface route
   - [ ] Setup samples library route
-  - [ ] Create settings page
+  - [x] Create settings page
 - [x] Configure navigation between routes
   - [x] Implement navigation component for DAW section
   - [ ] Create breadcrumb navigation
@@ -100,7 +101,26 @@
 - [x] Verify routing functionality
   - [x] Test navigation flow
   - [x] Verify proper state preservation between routes
-  - [x] Test dynamic routes with different project IDs
+  - [ ] Implement proper dynamic routes for projects
+
+### Project System Implementation
+- [ ] Properly implement dynamic project routing
+  - [ ] Fix TypeScript issues with [projectId] parameter typing
+  - [ ] Implement proper async data loading pattern for dynamic routes
+  - [ ] Create getStaticParams or getServerSideProps for projects
+  - [ ] Test production build with dynamic routes
+- [ ] Update studio page to handle dynamic project loading
+  - [ ] Modify StudioClient to accept different project data
+  - [ ] Create loading and error states for project loading
+  - [ ] Implement project switching without page refresh
+- [ ] Create project selection interface
+  - [ ] Build projects grid/list view
+  - [ ] Implement project creation workflow
+  - [ ] Add project deletion and management features
+- [ ] Fix route linking throughout application
+  - [ ] Update dashboard links to use proper project routes
+  - [ ] Ensure consistent routing patterns across components
+  - [ ] Test deep linking to specific projects
 
 ### Database Schema Extension
 - [ ] Design database schema for DAW functionality
