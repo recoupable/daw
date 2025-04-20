@@ -8,8 +8,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Tone from 'tone';
 import {
   AudioMixer,
-  AudioSourceOptions,
-  AudioSource,
+  type AudioSourceOptions,
+  type AudioSource,
 } from '../audio/AudioMixer';
 
 interface UseAudioMixerProps {
@@ -158,7 +158,7 @@ export function useAudioMixer({
         if (player.loaded) {
           player.start();
         } else {
-          player.load().then(() => {
+          player.load(url).then(() => {
             player.start();
           });
         }
