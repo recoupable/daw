@@ -37,8 +37,9 @@ export default function Page() {
     } else if (state.status === 'success') {
       setIsSuccessful(true);
       router.refresh();
+      router.push('/studio');
     }
-  }, [state.status]);
+  }, [state.status, router]);
 
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get('email') as string);

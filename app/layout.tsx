@@ -5,6 +5,14 @@ import { ThemeProvider } from '@/components/theme-provider';
 import Link from 'next/link';
 import { ClientComponents } from '@/components/ClientComponents';
 import { Analytics } from '@vercel/analytics/react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MenuIcon } from '@/components/icons';
 
 import './globals.css';
 
@@ -87,32 +95,27 @@ export default async function RootLayout({
             <div className="flex items-center gap-2 font-semibold">
               <Link href="/">AI DAW</Link>
             </div>
-            <nav className="flex items-center space-x-4 lg:space-x-6">
-              <Link
-                href="/"
-                className="text-sm font-medium transition-colors hover:text-primary"
-              >
-                Home
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                DAW
-              </Link>
-              <Link
-                href="/projects"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Projects
-              </Link>
-              <Link
-                href="/studio"
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Studio
-              </Link>
-            </nav>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="p-2">
+                  <MenuIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href="/">Home</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">DAW</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/projects">Projects</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/studio">Studio</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </header>
           {children}
           <Analytics />
