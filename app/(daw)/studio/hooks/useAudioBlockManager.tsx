@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import * as Tone from 'tone';
 import { useAudioMixer } from './useAudioMixer';
-import { initializeAudioContext, beatsToSeconds } from '../audio/audioUtils';
+import { initializeAudioContext, beatsToSeconds } from '../utils/audioUtils';
 import type { AudioBlock } from '@/app/types/daw';
 
 interface UseAudioBlockManagerProps {
